@@ -22,17 +22,13 @@ Let's grab the means, medians, and total for the steps at each date using dplyr:
 library(dplyr)
 library(ggplot2)
 activity.tbl<-tbl_df(activity)
-mns<-activity.tbl%>%
-    group_by(date)%>%
-    summarize(mn = mean(steps, na.rm = TRUE))
-mdns<-activity.tbl%>%
-    group_by(date)%>%
-    summarize(mdn = median(steps, na.rm = TRUE))
 total<-activity.tbl%>%
     group_by(date)%>%
     summarize(totalSteps = sum(steps, na.rm = TRUE))
-mns
-mdns
+mn<-mean(total$totalSteps)
+mdn<-median(total$totalSteps)
+mn
+mdn
 qplot(total$totalSteps, geom="histogram", main = "Histogram of total steps per day", xlab = "Total Steps")
 ```
 
@@ -66,17 +62,13 @@ for (i in 1:length(activity2[,1])){
 }
 #Using the same code from above to calculate summary statistics
 activity2.tbl<-tbl_df(activity2)
-mns2<-activity2.tbl%>%
-    group_by(date)%>%
-    summarize(mn = mean(steps, na.rm = TRUE))
-mdns2<-activity2.tbl%>%
-    group_by(date)%>%
-    summarize(mdn = median(steps, na.rm = TRUE))
 total2<-activity2.tbl%>%
     group_by(date)%>%
-    summarize(totalSteps = sum(steps, na.rm = TRUE))
-mns2
-mdns2
+    summarize(totalSteps = sum(steps))
+mn2<-mean(total2$totalSteps)
+mdn2<-median(total2$totalSteps)
+mn2
+mdn2
 qplot(total2$totalSteps, geom="histogram", main = "Histogram of total steps per day", xlab = "Total Steps")
 ```
 
