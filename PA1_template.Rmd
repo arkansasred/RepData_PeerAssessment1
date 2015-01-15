@@ -1,25 +1,108 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research Project 1"
+author: "Josh Oberman"
+date: "January 14, 2015"
+output: html_document
 ---
 
-
-## Loading and preprocessing the data
-
+**Read in and preprocess the data**, I'm going to tell R to NOT factor the dates and instead use lubridate to convert them to POSIXct format:
 
 
-## What is mean total number of steps taken per day?
+```{r echo = TRUE}
+library(lubridate)
+activity<-read.csv('activity.csv', stringsAsFactors = FALSE)
+activity$date<-ymd(activity$date)
+str(activity)
+```
 
+**What is mean total number of steps taken per day?**
+Let's grab the means, medians, and total for the steps at each date using dplyr:
 
+```{r echo = TRUE}
+library(dplyr)
+library(ggplot2)
+activity.tbl<-tbl_df(activity)
+mns<-activity.tbl%>%
+    group_by(date)%>%
+    summarize(mn = mean(steps, na.rm = TRUE))
+mdns<-activity.tbl%>%
+    group_by(date)%>%
+    summarize(mdn = median(steps, na.rm = TRUE))
+total<-activity.tbl%>%
+    group_by(date)%>%
+    summarize(totalSteps = sum(steps, na.rm = TRUE))
+mns
+mdns
+qplot(total$totalSteps, geom="histogram", main = "Histogram of total steps per day", xlab = "Total Steps")
+```
 
-## What is the average daily activity pattern?
+**What is the average daily activity pattern?**
+Now let's again use dplyr to grab the average steps across days by 5-minute interval and plot it:
 
+```{r echo = TRUE}
+meanByInterval<-activity.tbl%>%
+    group_by(interval)%>%
+    summarize(meanSteps = mean(steps, na.rm = TRUE))
+qplot(meanByInterval$interval, meanByInterval$meanSteps, geom = "line", main = "Mean of Steps by Time Interval", xlab = "Time (minutes)", ylab = "Number of Steps")
+##Get the interval wth the maximum number of average steps
+meanByInterval$interval[meanByInterval$meanSteps == max(meanByInterval$meanSteps)]
+```
 
+**Imputing missing values**
+First we'll get the number of missing step counts, then fill in each missing value with the average value for that interval across days. The same code from above can be used to compute the summary statistics.
 
-## Imputing missing values
+```{r echo = TRUE}
+#number of missing vals
+length(activity[,1][is.na(activity[,1])])
+#make activity2, will be the same as activity to start
+activity2<-activity
+for (i in 1:length(activity2[,1])){
+    #if  value X is NA, look up the mean value for that interval and set X to it
+    if (is.na(activity2[i,1])){
+        interv<-activity2[i,3]
+        meanVal<-meanByInterval$meanSteps[meanByInterval$interval==interv]
+        activity2[i,1]<-meanVal
+    }
+}
+#Using the same code from above to calculate summary statistics
+activity2.tbl<-tbl_df(activity2)
+mns2<-activity2.tbl%>%
+    group_by(date)%>%
+    summarize(mn = mean(steps, na.rm = TRUE))
+mdns2<-activity2.tbl%>%
+    group_by(date)%>%
+    summarize(mdn = median(steps, na.rm = TRUE))
+total2<-activity2.tbl%>%
+    group_by(date)%>%
+    summarize(totalSteps = sum(steps, na.rm = TRUE))
+mns2
+mdns2
+qplot(total2$totalSteps, geom="histogram", main = "Histogram of total steps per day", xlab = "Total Steps")
+```
 
+**Are there differences in activity patterns between weekdays and weekends?**
 
+For this, we'll define a funciton that takes in day names and tells us if it's a weekend or weekday, then we'll use the same code from above to take the mean steps by interval, and plot the time series graphs using ggplot, faceting by weekend/weekday
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{r echo = TRUE}
+isWeekend<-function(day){
+    if (day=="Saturday" | day=="Sunday"){
+        day <- "Weekend"
+    }
+    else{
+        day <- "Weekday"
+    }
+}
+#apply the weekdays function to get day names, then isWeekend function
+activity2$day<-sapply(activity2$date, weekdays)
+activity2$day<-sapply(activity2$day, isWeekend)
+activity2$day<-factor(activity2$day)
+
+activity2.tbl<-tbl_df(activity2)
+meanByInterval2<-activity2.tbl%>%
+    group_by(interval, day)%>%
+    summarize(meanSteps = mean(steps))
+qplot(data = meanByInterval2, x = interval, y = meanSteps, facets = .~day, geom = "line", main = "Mean of Steps by Time Interval", xlab = "Time (minutes)", ylab = "Number of Steps")
+```
+
+The graph for weekday shows a definite peak around 800 minutes, perhaps due to a walk to work or something of the like, the weekend graph also has a peak around that time, bu not significantly higher than the other peaks throughout the day
